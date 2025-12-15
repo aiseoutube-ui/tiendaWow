@@ -195,7 +195,7 @@ function App() {
 
       <main className="flex-grow pt-28">
         
-        {/* Warm & Clean Hero */}
+        {/* Warm & Clean Hero (Restored) */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 mb-16">
             <div ref={heroRef} className="relative rounded-[2rem] overflow-hidden bg-[#F3F0E6] md:aspect-[2.5/1] aspect-[4/5] flex items-center">
                 {/* Decorative Blobs */}

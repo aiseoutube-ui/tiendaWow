@@ -1,17 +1,24 @@
 // -----------------------------------------------------------
 // GOOGLE APPS SCRIPT BACKEND FOR TIENDAWOW
 // -----------------------------------------------------------
-// 1. Create a Google Sheet.
-// 2. Create tab "Productos" with columns: id, name, price, oldPrice, stock, imageUrl, videoUrl, description
-// 3. Create tab "Pedidos" with columns: orderId, date, customerName, phone, total, items, paymentMethod, status
-// 4. Extensions > Apps Script. Paste this code.
-// 5. Deploy > New Deployment > Web App > Execute as: Me > Who has access: Anyone.
+// IMPORTANTE:
+// Cada vez que actualices este código, debes ir a:
+// "Implementar" (Deploy) > "Gestionar implementaciones" > "Editar"
+// > Versión: "NUEVA VERSIÓN" (New Version) > "Implementar".
+// Si no creas una nueva versión, los cambios NO se aplicarán.
 // -----------------------------------------------------------
 
 function doGet(e) {
   const params = e.parameter;
   const action = params.action;
   
+  // CORS Headers for all responses
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
   if (action === 'getProducts') {
     return getProducts();
   } else if (action === 'checkStock') {
@@ -42,6 +49,8 @@ function doPost(e) {
 
 function getProducts() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Productos');
+  if (!sheet) return responseJSON({ status: 'error', message: 'Tab Productos missing' });
+
   const data = sheet.getDataRange().getValues();
   const headers = data.shift(); // Remove headers
   
@@ -66,7 +75,7 @@ function checkStock(id) {
   const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] == id) {
+    if (String(data[i][0]) == String(id)) {
       return responseJSON({ status: 'success', data: Number(data[i][4]) });
     }
   }
@@ -75,24 +84,31 @@ function checkStock(id) {
 
 function getOrder(orderId) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Pedidos');
-  // Assuming column A (index 0) is orderId, column C (index 2) is Name, column H (index 7) is Status
+  if (!sheet) return responseJSON({ status: 'error', message: 'Tab Pedidos missing' });
+
+  // Column A (0) is OrderID
   const data = sheet.getDataRange().getValues();
   
+  // Limpiamos el input
+  const searchId = String(orderId).trim().toLowerCase();
+
   for (let i = 1; i < data.length; i++) {
-    // Loose equality to catch number vs string differences
-    if (data[i][0] == orderId) { 
+    // Convertimos ambos a string, trim y lower para comparación robusta
+    const rowId = String(data[i][0]).trim().toLowerCase();
+    
+    if (rowId == searchId) { 
       return responseJSON({ 
         status: 'success', 
         data: {
-          id: data[i][0],
+          id: data[i][0], // Retornamos el ID original con mayúsculas correctas
           customerName: data[i][2],
           total: Number(data[i][4]),
-          status: data[i][7] // The status column
+          status: data[i][7] // Status column (H)
         } 
       });
     }
   }
-  return responseJSON({ status: 'error', message: 'Pedido no encontrado' });
+  return responseJSON({ status: 'error', message: 'Pedido no encontrado en Sheet' });
 }
 
 function createOrder(order) {
@@ -101,25 +117,24 @@ function createOrder(order) {
   const orderSheet = ss.getSheetByName('Pedidos');
   const lock = LockService.getScriptLock();
   
-  // Try to obtain lock to prevent race conditions during stock updates
   try {
-    lock.waitLock(10000); // Wait up to 10 seconds
+    lock.waitLock(10000); 
   } catch (e) {
-    return responseJSON({ status: 'error', message: 'Server busy, try again.' });
+    return responseJSON({ status: 'error', message: 'Servidor ocupado, intenta de nuevo.' });
   }
 
   const productData = productSheet.getDataRange().getValues();
   const items = order.items;
-  const updates = []; // Store updates to apply them all at once if validation passes
+  const updates = []; 
 
-  // 1. Validate Stock for ALL items
+  // 1. Validate Stock
   for (let k = 0; k < items.length; k++) {
     let item = items[k];
     let productRowIndex = -1;
     let currentStock = 0;
     
     for (let i = 1; i < productData.length; i++) {
-      if (productData[i][0] == item.id) {
+      if (String(productData[i][0]) == String(item.id)) {
         productRowIndex = i + 1;
         currentStock = Number(productData[i][4]);
         break;
@@ -133,20 +148,19 @@ function createOrder(order) {
 
     if (currentStock < item.quantity) {
       lock.releaseLock();
-      return responseJSON({ status: 'error', message: `Stock insuficiente para ${item.name}. Disponibles: ${currentStock}` });
+      return responseJSON({ status: 'error', message: `Stock insuficiente para ${item.name}. Disp: ${currentStock}` });
     }
     
-    // Store the update plan: [rowIndex, newStock]
     updates.push({ rowIndex: productRowIndex, newStock: currentStock - item.quantity });
   }
   
-  // 2. Deduct Stock (All checks passed)
+  // 2. Deduct Stock
   for (let u = 0; u < updates.length; u++) {
     productSheet.getRange(updates[u].rowIndex, 5).setValue(updates[u].newStock);
   }
   
   // 3. Save Order
-  const orderId = 'ORD-' + Math.floor(Math.random() * 100000);
+  const orderId = 'ORD-' + Math.floor(10000 + Math.random() * 90000); // 5 digits
   const date = new Date();
   
   orderSheet.appendRow([
@@ -155,9 +169,9 @@ function createOrder(order) {
     order.customerName,
     order.customerPhone,
     order.total,
-    JSON.stringify(order.items), // Save full JSON of items
+    JSON.stringify(order.items), 
     order.paymentMethod,
-    'PENDING' // Initial status
+    'PENDING' 
   ]);
   
   lock.releaseLock();
@@ -168,72 +182,4 @@ function responseJSON(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-// -----------------------------------------------------------
-// UTILITY: SEED DATABASE (Run this manually once)
-// -----------------------------------------------------------
-function seedDatabase() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Productos');
-  if (!sheet) {
-    throw new Error('La hoja "Productos" no existe. Créala primero.');
-  }
-  
-  // Clear existing data but keep headers if they exist, or reset completely
-  sheet.clear();
-  
-  // Headers
-  const headers = ['id', 'name', 'price', 'oldPrice', 'stock', 'imageUrl', 'videoUrl', 'description'];
-  sheet.appendRow(headers);
-  
-  const categories = [
-    { name: 'Audífonos', adj: ['Bluetooth', 'Pro', 'Cancelación de Ruido', 'Gamer', 'Sport', 'Bass'] },
-    { name: 'Smartwatch', adj: ['T500', 'Serie 8', 'Deportivo', 'Elegante', 'Fit', 'Ultra'] },
-    { name: 'Zapatillas', adj: ['Urbanas', 'Running', 'Flow', 'Retro', 'Chunky', 'Air'] },
-    { name: 'Mochila', adj: ['Antirrobo', 'USB', 'Impermeable', 'Laptop', 'Viajera', 'Minimalista'] },
-    { name: 'Parlante', adj: ['Portátil', 'RGB', 'Waterproof', 'Mini', 'Boombox', 'Stereo'] },
-    { name: 'Aro de Luz', adj: ['LED', 'RGB', '26cm', 'Profesional', 'Selfie', 'Tripode'] },
-    { name: 'Case', adj: ['iPhone', 'Samsung', 'Transparente', 'Antigolpes', 'Silicona', 'Magsafe'] },
-    { name: 'Cámara', adj: ['Seguridad', 'Wifi', 'Espía', 'Deportiva', '4K', 'Baby Monitor'] }
-  ];
-
-  const descriptions = [
-    "La mejor calidad precio del mercado. Ideal para tu día a día en Lima.",
-    "Diseño exclusivo y materiales de alta durabilidad. Envío rápido.",
-    "Perfecto para regalo o uso personal. Garantía de tienda.",
-    "Última tendencia en tecnología. Stock limitado por lanzamiento.",
-    "Comodidad y estilo en un solo producto. Compra segura."
-  ];
-  
-  const videoUrls = [
-    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "", "", "" // Only some have videos
-  ];
-
-  const newRows = [];
-  
-  for (let i = 1; i <= 50; i++) {
-    const cat = categories[Math.floor(Math.random() * categories.length)];
-    const adj = cat.adj[Math.floor(Math.random() * cat.adj.length)];
-    const name = `${cat.name} ${adj} ${Math.floor(Math.random() * 100) + 2024}`;
-    
-    const id = `P${String(i).padStart(3, '0')}`;
-    const price = Math.floor(Math.random() * 200) + 30; // 30 to 230
-    const hasDiscount = Math.random() > 0.4; // 60% chance of discount
-    const oldPrice = hasDiscount ? Math.floor(price * (1.2 + Math.random() * 0.5)) : '';
-    const stock = Math.random() > 0.1 ? Math.floor(Math.random() * 50) + 2 : 0; // 10% chance of 0 stock
-    
-    // Generate a consistent random image based on ID
-    // We use picsum with a specific seed so the image doesn't change on reload
-    const imageUrl = `https://picsum.photos/seed/${id}/500/500`;
-    
-    const video = videoUrls[Math.floor(Math.random() * videoUrls.length)];
-    const desc = descriptions[Math.floor(Math.random() * descriptions.length)];
-
-    newRows.push([id, name, price, oldPrice, stock, imageUrl, video, desc]);
-  }
-  
-  // Batch write for performance
-  sheet.getRange(2, 1, newRows.length, 8).setValues(newRows);
 }

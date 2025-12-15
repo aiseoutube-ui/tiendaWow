@@ -1,15 +1,16 @@
 import { Product } from './types';
 
 // Configuración del Backend (Google Apps Script)
+// Una vez despliegues tu script propio, pega aquí tu URL:
 export const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeSXkG3XNtqPdjMdYDMdL5cwHk0ORDwE_-Y5haCPun6SsB9kaI19aMjGBUwhhoQy4Q/exec";
 
-// Cambiar a FALSE para usar los datos reales de tu Google Sheet
+// IMPORTANTE: FALSE para usar la base de datos real de Google Sheets.
 export const USE_MOCK_DATA = false;
 
 export const YAPE_QR_URL = "https://picsum.photos/300/300?grayscale"; // Placeholder QR
 export const PLIN_QR_URL = "https://picsum.photos/300/300?blur=2"; // Placeholder QR
 
-// Datos de respaldo por si falla la conexión o para modo prueba
+// Datos de respaldo por si falla la conexión (Fallback)
 export const MOCK_PRODUCTS: Product[] = [
   {
     id: "P001",

@@ -26,5 +26,6 @@ export const getLocalOrders = (): Order[] => {
 
 export const getOrderById = (id: string): Order | undefined => {
     const orders = getLocalOrders();
-    return orders.find(o => o.id === id);
+    // Búsqueda insensible a mayúsculas/minúsculas
+    return orders.find(o => o.id && o.id.toLowerCase().trim() === id.toLowerCase().trim());
 }
