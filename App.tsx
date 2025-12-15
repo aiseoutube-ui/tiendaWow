@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ShoppingBag, Search, Menu, Star, Sparkles, Instagram, Facebook, Truck, ArrowDownCircle, Info, Mail, History } from 'lucide-react';
+import { ShoppingBag, Search, Menu, Star, Sparkles, Instagram, Facebook, Truck, ArrowDownCircle, Info, Mail, History, X, Home } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -12,6 +12,7 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { OrderTrackerModal } from './components/OrderTrackerModal';
 import { InfoModal } from './components/InfoModals';
 import { OrderHistoryModal } from './components/OrderHistoryModal';
+import { ContactSection } from './components/ContactSection';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,6 +27,9 @@ function App() {
   // Cart State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  
+  // Navigation State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Modals State
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -65,6 +69,17 @@ function App() {
     setVisibleCount(prev => prev + 8);
   };
 
+  const scrollToContact = () => {
+    setIsMobileMenuOpen(false);
+    const element = document.getElementById('contact-section');
+    if (element) element.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const openInfoModal = (type: 'ABOUT' | 'SHIPPING') => {
+      setInfoModalType(type);
+      setIsMobileMenuOpen(false);
+  };
+
   // Cart Functions
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart(prev => {
@@ -91,14 +106,26 @@ function App() {
     <div className="min-h-screen flex flex-col relative overflow-x-hidden bg-[#FAFAF9]">
       
       {/* Navbar */}
-      <header className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 border-b ${isScrolled ? 'bg-white/90 backdrop-blur-md border-neutral-200 py-3 shadow-sm' : 'bg-transparent border-transparent py-6'}`}>
+      <header className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 border-b ${isScrolled ? 'bg-white/95 backdrop-blur-md border-neutral-200 py-3 shadow-sm' : 'bg-transparent border-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           
           <div className="flex items-center gap-4">
-            <button className="lg:hidden text-neutral-800"><Menu size={24} /></button>
+            {/* Mobile Menu Button */}
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden text-neutral-800 p-1">
+                <Menu size={24} />
+            </button>
+            
             <h1 className="text-2xl font-bold tracking-tight text-neutral-900 cursor-pointer select-none flex items-center gap-1">
               Tienda<span className="text-orange-600 font-extrabold">Wow</span>.
             </h1>
+
+            {/* Desktop Nav */}
+            <nav className="hidden lg:flex items-center gap-6 ml-8">
+                <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="text-sm font-bold text-neutral-600 hover:text-orange-600 transition-colors">Inicio</button>
+                <button onClick={() => openInfoModal('ABOUT')} className="text-sm font-bold text-neutral-600 hover:text-orange-600 transition-colors">Nosotros</button>
+                <button onClick={() => openInfoModal('SHIPPING')} className="text-sm font-bold text-neutral-600 hover:text-orange-600 transition-colors">Envíos</button>
+                <button onClick={scrollToContact} className="text-sm font-bold text-neutral-600 hover:text-orange-600 transition-colors">Contacto</button>
+            </nav>
           </div>
           
           <div className="flex items-center gap-3">
@@ -126,7 +153,47 @@ function App() {
         </div>
       </header>
 
-      <main className="flex-grow pt-28 pb-20">
+      {/* Mobile Menu Drawer */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+            <div className="absolute top-0 left-0 h-full w-[280px] bg-white shadow-2xl p-6 flex flex-col animate-slide-right">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-xl font-bold">Menú</h2>
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-neutral-100 rounded-full text-neutral-500">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <nav className="flex flex-col gap-2">
+                    <button onClick={() => { window.scrollTo({top:0, behavior:'smooth'}); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <Home size={20} /> Inicio
+                    </button>
+                    <button onClick={() => setIsHistoryOpen(true)} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <History size={20} /> Mis Pedidos
+                    </button>
+                     <button onClick={() => setIsTrackerOpen(true)} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <Truck size={20} /> Rastrear Pedido
+                    </button>
+                    <button onClick={() => openInfoModal('ABOUT')} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <Info size={20} /> Quiénes Somos
+                    </button>
+                     <button onClick={() => openInfoModal('SHIPPING')} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <Truck size={20} /> Envíos
+                    </button>
+                    <button onClick={scrollToContact} className="flex items-center gap-3 p-4 rounded-xl hover:bg-orange-50 text-left font-bold text-neutral-700 hover:text-orange-600 transition-colors">
+                        <Mail size={20} /> Contacto
+                    </button>
+                </nav>
+
+                <div className="mt-auto pt-6 border-t border-neutral-100">
+                    <p className="text-xs text-center text-neutral-400">TiendaWow Lima v1.0</p>
+                </div>
+            </div>
+        </div>
+      )}
+
+      <main className="flex-grow pt-28">
         
         {/* Warm & Clean Hero */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 mb-16">
@@ -253,6 +320,9 @@ function App() {
             )}
         </div>
 
+        {/* Embedded Contact Section (Replaces Modal for Form) */}
+        <ContactSection />
+
       </main>
 
       {/* Clean Footer */}
@@ -278,18 +348,13 @@ function App() {
                       </button>
                     </li>
                     <li>
-                        <button onClick={() => setInfoModalType('SHIPPING')} className="hover:text-orange-600 transition-colors flex items-center gap-2">
+                        <button onClick={() => openInfoModal('SHIPPING')} className="hover:text-orange-600 transition-colors flex items-center gap-2">
                            Envíos y Devoluciones
                         </button>
                     </li>
                     <li>
-                        <button onClick={() => setInfoModalType('ABOUT')} className="hover:text-orange-600 transition-colors flex items-center gap-2">
+                        <button onClick={() => openInfoModal('ABOUT')} className="hover:text-orange-600 transition-colors flex items-center gap-2">
                            <Info size={14} /> Quiénes Somos
-                        </button>
-                    </li>
-                    <li>
-                        <button onClick={() => setInfoModalType('CONTACT')} className="hover:text-orange-600 transition-colors flex items-center gap-2">
-                           <Mail size={14} /> Contáctanos
                         </button>
                     </li>
                 </ul>
